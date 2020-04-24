@@ -28,6 +28,6 @@ namespace DirectOutput.Cab.Toys.Layer
         TopDownAlternateRightLeft,
         BottomUpAlternateLeftRight,
         BottomUpAlternateRightLeft,
-        LeftRightAlternateTopDownSplitMatrix
+        LeftRightAlternateTopDownSplitMatrix,
     }
 }
