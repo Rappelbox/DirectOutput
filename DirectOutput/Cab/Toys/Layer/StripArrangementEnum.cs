@@ -27,6 +27,7 @@ namespace DirectOutput.Cab.Toys.Layer
         TopDownAlternateLeftRight,
         TopDownAlternateRightLeft,
         BottomUpAlternateLeftRight,
-        BottomUpAlternateRightLeft
+        BottomUpAlternateRightLeft,
+        LeftRightAlternateTopDownSplitMatrix
     }
 }
