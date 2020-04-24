@@ -323,6 +323,17 @@ namespace DirectOutput.Cab.Toys.Hardware
                         case LedStripArrangementEnum.BottomUpAlternateRightLeft:
                             LedNr = (Height * (Width - 1 - X)) + ((X & 1) == 0 ? Y : (Height - 1 - Y));
                             break;
+                        case LedStripArrangementEnum.LeftRightAlternateTopDownSplitMatrix:
+
+                            if ((X >= (Width / 2))) //right side
+
+                                LedNr = (Width * Height)/2 + (Width/2 * Y) + ((Y & 1) == 0 ? (X - Width/2) : (Width - 1 - X));
+
+                            else //left side
+
+                                LedNr = (Width/2 * Y) + ((Y & 1) == 0 ? X : (Width/2 - 1 - X));
+
+                            break;
                         default:
                             if (FirstException)
                             {
