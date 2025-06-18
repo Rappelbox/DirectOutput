@@ -9,10 +9,11 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
 {
     /// <summary>
     /// The TeensyStripController is used to control up to 8 WS2811/WS2812 based ledstrips with up to 1100 leds per strip which are connected to a Teensy 3.1, 3.2 or later.
-    /// 
+    /// With the Teensy 4.0 and 4.1 it is possible to address up to 42/50 (!) parrallel outputs with up to 1.100 LEDs @ ~30fps or 550 @ ~60fps
+    /// Limitation to currently 24 channels as it doesn't seem reasonable to drive even more outputs since lack of output devices and output controllers utilizing such a huge amount of ports and LEDs  
     /// \image html TeensyOctoWS2811.jpg
     /// 
-    /// The best place to get the hardware is probably the <a target="_blank" href="http://pjrc.com/teensy/">website</a> of the Teennsy inventor, where you can buy the <a target="_blank" href="http://pjrc.com/store/teensy32_pins.html">Teensy boards</a> (check if newer versions are available) and also a <a target="_blank" href="http://pjrc.com/store/octo28_adaptor.html">adapter board</a> which allows for easy connection of up to 8 led strips. There are also numerous other vendors of Teensy hardware (just ask Google).
+    /// Since beginning of 2025 Teensy are now sold through SparkFun.com and their Resellers worldwide
     /// 
     /// The firmware for the Teensy based ledstrip controller is based on a slightly hacked version of Paul Stoffregens excellent OctoWS2811 LED Library which can easily drive up to 1100leds per channel on a Teensy 3.1 or later. More information on the OctoWS2811 lib can be found on the Teensy website, on Github and many other places on the internet.
     /// 
