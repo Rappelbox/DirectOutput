@@ -21,7 +21,7 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
     /// </summary>
     public class TeensyStripController : OutputControllerCompleteBase
     {
-        protected int[] NumberOfLedsPerStrip = new int[10];
+        protected int[] NumberOfLedsPerStrip = new int[24];
 
         /// <summary>
         /// Gets or sets the number of leds of ledstrip connected to channel 1 of the Teensy.
@@ -59,7 +59,6 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
                 base.SetupOutputs();
             }
         }
-
         /// <summary>
         /// Gets or sets the number of leds of ledstrip connected to channel 3 of the Teensy.
         /// </summary>
@@ -114,7 +113,6 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
                 base.SetupOutputs();
             }
         }
-
         /// <summary>
         /// Gets or sets the number of leds of ledstrip connected to channel 6 of the Teensy.
         /// </summary>
@@ -205,7 +203,257 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
                 base.SetupOutputs();
             }
         }
-
+        /// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 11 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 11 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip11
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[10];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[10] = value;
+                base.SetupOutputs();
+            }
+        }
+        /// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 12 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 12 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip12
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[11];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[11] = value;
+                base.SetupOutputs();
+            }
+        }
+	/// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 13 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 13 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip13
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[12];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[12] = value;
+                base.SetupOutputs();
+            }
+        }
+	/// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 14 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 14 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip14
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[13];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[13] = value;
+                base.SetupOutputs();
+            }
+        }
+	/// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 15 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 15 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip15
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[14];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[14] = value;
+                base.SetupOutputs();
+            }
+        }
+	/// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 16 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 16 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip16
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[15];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[15] = value;
+                base.SetupOutputs();
+            }
+        }
+	/// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 17 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 17 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip17
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[16];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[16] = value;
+                base.SetupOutputs();
+            }
+        }
+	/// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 18 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 18 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip18
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[17];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[17] = value;
+                base.SetupOutputs();
+            }
+        }
+	/// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 19 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 19 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip19
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[18];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[18] = value;
+                base.SetupOutputs();
+            }
+        }
+	/// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 20 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 20 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip20
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[19];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[19] = value;
+                base.SetupOutputs();
+            }
+        }        /// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 21 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 21 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip21
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[20];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[20] = value;
+                base.SetupOutputs();
+            }
+        }
+	/// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 22 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 22 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip22
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[21];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[21] = value;
+                base.SetupOutputs();
+            }
+        }
+	/// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 23 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 23 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip23
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[22];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[22] = value;
+                base.SetupOutputs();
+            }
+        }
+	/// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 24 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 24 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip24
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[23];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[23] = value;
+                base.SetupOutputs();
+            }
+        }
         private string _ComPortName;
 
         /// <summary>
