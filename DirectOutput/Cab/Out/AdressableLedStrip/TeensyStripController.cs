@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,7 +21,7 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
     /// </summary>
     public class TeensyStripController : OutputControllerCompleteBase
     {
-        private int[] NumberOfLedsPerStrip = new int[8];
+        protected int[] NumberOfLedsPerStrip = new int[10];
 
         /// <summary>
         /// Gets or sets the number of leds of ledstrip connected to channel 1 of the Teensy.
@@ -169,6 +169,42 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
                 base.SetupOutputs();
             }
         }
+        /// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 9 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 9 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip9
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[8];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[8] = value;
+                base.SetupOutputs();
+            }
+        }
+        /// <summary>
+        /// Gets or sets the number of leds of ledstrip connected to channel 10 of the Teensy.
+        /// </summary>
+        /// <value>
+        /// The number of leds on the ledstrip connected to channel 10 of the Teensy.
+        /// </value>
+        public int NumberOfLedsStrip10
+        {
+            get
+            {
+                return NumberOfLedsPerStrip[9];
+            }
+            set
+            {
+                NumberOfLedsPerStrip[9] = value;
+                base.SetupOutputs();
+            }
+        }
 
         private string _ComPortName;
 
@@ -184,6 +220,61 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
             set { _ComPortName = value; }
         }
 
+        private int _ComPortBaudRate = 9600;
+
+        /// <summary>
+        /// Gets or sets the COM port baud rate.
+        /// </summary>
+        /// <value>
+        /// The baud rate of the Com port (by default 9600) the Teensy board is using.
+        /// </value>
+        public int ComPortBaudRate
+        {
+            get { return _ComPortBaudRate; }
+            set { _ComPortBaudRate = value; }
+        }
+
+        private Parity _ComPortParity = Parity.None;
+
+        /// <summary>
+        /// Gets or sets the COM port Parity.
+        /// </summary>
+        /// <value>
+        /// The Parity of the Com port (by default Parity.None) the Teensy board is using.
+        /// </value>
+        public Parity ComPortParity
+        {
+            get { return _ComPortParity; }
+            set { _ComPortParity = value; }
+        }
+
+        private int _ComPortDataBits = 8;
+
+        /// <summary>
+        /// Gets or sets the COM port DataBits.
+        /// </summary>
+        /// <value>
+        /// The DataBits of the Com port (by default 8) the Teensy board is using.
+        /// </value>
+        public int ComPortDataBits
+        {
+            get { return _ComPortDataBits; }
+            set { _ComPortDataBits = value; }
+        }
+
+        private StopBits _ComPortStopBits = StopBits.One;
+
+        /// <summary>
+        /// Gets or sets the COM port StopBits.
+        /// </summary>
+        /// <value>
+        /// The StopBits of the Com port (by default StopBits.One) the Teensy board is using.
+        /// </value>
+        public StopBits ComPortStopBits
+        {
+            get { return _ComPortStopBits; }
+            set { _ComPortStopBits = value; }
+        }
 
         private int _ComPortTimeOutMs = 200;
 
@@ -211,15 +302,89 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
             }
         }
 
+        private int _ComPortOpenWaitMs = 50;
 
+		/// <summary>
+		/// Gets or sets the COM port wait in milliseconds when opening the port.
+		/// This properties accepts values between 50 and 5000 milliseconds (default 50ms). If a value outside this range is specified, the properties value reverts to the default value of 50ms.
+		/// </summary>
+		/// <value>
+		/// The COM port wait on opening in milliseconds (Valid range 50-5000ms, default: 50ms).
+		/// </value>
+		public int ComPortOpenWaitMs
+        {
+            get { return _ComPortOpenWaitMs; }
+            set {
+                if (value.IsBetween(50, 5000)) {
+                    _ComPortOpenWaitMs = value;
+                } else {
+                    _ComPortOpenWaitMs = 50;
+                    Log.Warning("The specified value {0} for the ComPortOpenWaitMs is outside the valid range of 50 to 5000. Will use the default value of 50ms.".Build(value));
+                }
+            }
+        }
+
+        private int _ComPortHandshakeStartWaitMs = 20;
 
         /// <summary>
-        /// This method returns the sum of the number of leds configured for the 8 output channels of the Teensy board.
+        /// Gets or sets the COM port wait in milliseconds at the start of the handshake phase.
+        /// This properties accepts values between 20 and 500 milliseconds (default 20ms). If a value outside this range is specified, the properties value reverts to the default value of 20ms.
         /// </summary>
-        /// <returns>
-        /// The sum of the number of leds configured for the 8 output channels of the Teensy board.
-        /// </returns>
-        protected override int GetNumberOfConfiguredOutputs()
+        /// <value>
+        /// The COM port wait before read in milliseconds (Valid range 20-500ms, default: 20ms).
+        /// </value>
+        public int ComPortHandshakeStartWaitMs
+        {
+            get { return _ComPortHandshakeStartWaitMs; }
+            set {
+                if (value.IsBetween(20, 500)) {
+                    _ComPortHandshakeStartWaitMs = value;
+                } else {
+                    _ComPortHandshakeStartWaitMs = 20;
+                    Log.Warning("The specified value {0} for the ComPortHandshakeStartWaitMs is outside the valid range of 20 to 500. Will use the default value of 20ms.".Build(value));
+                }
+            }
+        }
+
+        private int _ComPortHandshakeEndWaitMs = 50;
+
+        /// <summary>
+        /// Gets or sets the COM port timeout in milliseconds at the end of the handshake phase.
+        /// This properties accepts values between 50 and 500 milliseconds (default 50ms). If a value outside this range is specified, the properties value reverts to the default value of 50ms.
+        /// </summary>
+        /// <value>
+        /// The COM port wait after write in milliseconds (Valid range 50-500ms, default: 50ms).
+        /// </value>
+        public int ComPortHandshakeEndWaitMs
+        {
+            get { return _ComPortHandshakeEndWaitMs; }
+            set {
+                if (value.IsBetween(50, 500)) {
+                    _ComPortHandshakeEndWaitMs = value;
+                } else {
+                    _ComPortHandshakeEndWaitMs = 50;
+                    Log.Warning("The specified value {0} for the ComPortHandshakeEndWaitMs is outside the valid range of 50 to 500. Will use the default value of 50ms.".Build(value));
+                }
+            }
+        }
+
+		private bool _ComPortDtrEnable = false;
+
+		/// <summary></summary>
+		/// Gets or sets the COM port DTR (Data Terminal Ready) enable state.
+		public bool ComPortDtrEnable
+		{
+			get { return _ComPortDtrEnable; }
+			set { _ComPortDtrEnable = value; }
+		}
+
+		/// <summary>
+		/// This method returns the sum of the number of leds configured for the 8 output channels of the Teensy board.
+		/// </summary>
+		/// <returns>
+		/// The sum of the number of leds configured for the 8 output channels of the Teensy board.
+		/// </returns>
+		protected override int GetNumberOfConfiguredOutputs()
         {
             return NumberOfLedsPerStrip.Sum() * 3;
         }
@@ -253,8 +418,17 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
         }
 
 
-        SerialPort ComPort = null;
-        int NumberOfLedsPerChannel = -1;
+        protected SerialPort ComPort = null;
+        protected int NumberOfLedsPerChannel = -1;
+
+        protected virtual void SendLedstripData(byte[] OutputValues, int TargetPosition)
+        {
+            var NrOfLeds = OutputValues.Length / 3;
+            byte[] CommandData = new byte[5] { (byte)'R', (byte)(TargetPosition >> 8), (byte)(TargetPosition & 255), (byte)(NrOfLeds >> 8), (byte)(NrOfLeds & 255) };
+
+            ComPort.Write(CommandData, 0, 5);
+            ComPort.Write(OutputValues, 0, OutputValues.Length);
+        }
 
         protected override void UpdateOutputs(byte[] OutputValues)
         {
@@ -266,16 +440,14 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
             byte[] AnswerData;
             int BytesRead;
             int SourcePosition = 0;
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 10; i++)
             {
                 int NrOfLedsOnStrip = NumberOfLedsPerStrip[i];
                 if (NrOfLedsOnStrip > 0)
                 {
                     int TargetPosition = i * NumberOfLedsPerChannel;
-                    CommandData = new byte[5] { (byte)'R', (byte)(TargetPosition >> 8), (byte)(TargetPosition & 255), (byte)(NrOfLedsOnStrip >> 8), (byte)(NrOfLedsOnStrip & 255) };
 
-                    ComPort.Write(CommandData, 0, 5);
-                    ComPort.Write(OutputValues, SourcePosition * 3, NrOfLedsOnStrip * 3);
+                    SendLedstripData(OutputValues.Skip(SourcePosition*3).Take(NrOfLedsOnStrip*3).ToArray(), TargetPosition);
 
                     BytesRead = -1;
 
@@ -287,11 +459,11 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
                     }
                     catch (Exception E)
                     {
-                        throw new Exception("A exception occured while waiting for the ACK after sending the data for channel {0} of the TeensyStripController.".Build(i + 1), E);
+                        throw new Exception($"A exception occurred while waiting for the ACK after sending the data for channel {i+1} of the {this.GetType().ToString()}.", E);
                     }
                     if (BytesRead != 1 || AnswerData[0] != (byte)'A')
                     {
-                        throw new Exception("Received no answer or a unexpected answer while waiting for the ACK after sending the data for channel {0} of the TeensyStripController.".Build(i + 1));
+                        throw new Exception($"Received no answer or a unexpected answer while waiting for the ACK after sending the data for channel {i+1} of the {this.GetType().ToString()}.");
                     }
                     SourcePosition += NrOfLedsOnStrip;
                 }
@@ -309,11 +481,11 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
             }
             catch (Exception E)
             {
-                throw new Exception("A exception occured while waiting for the ACK after sending the output command (O) to the TeensyStripController", E);
+                throw new Exception($"A exception occurred while waiting for the ACK after sending the output command (O) to the {this.GetType().ToString()}", E);
             }
             if (BytesRead != 1 || AnswerData[0] != (byte)'A')
             {
-                throw new Exception("Received no answer or a unexpected answer while waiting for the ACK after sending the output command (O) to the TeensyStripController");
+                throw new Exception($"Received no answer or a unexpected answer while waiting for the ACK after sending the output command (O) to the {this.GetType().ToString()}");
             }
 
 
@@ -355,6 +527,52 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
 
         //}
 
+        protected virtual void SetupController()
+        {
+            //Check max number of leds per channel
+            ComPort.Write(new byte[] { (byte)'M' }, 0, 1);
+            byte[] ReceiveData = new byte[3];
+            int BytesRead = -1;
+
+            try {
+                BytesRead = ReadPortWait(ReceiveData, 0, 3);
+            } catch (Exception E) {
+                throw new Exception("Expected 3 bytes containing data on the max number of leds per channel, but the read operation resulted in a exception. Will not send data to the controller", E);
+            }
+
+
+            if (BytesRead != 3) {
+                throw new Exception($"The {this.GetType().ToString()} did not send the expected 3 bytes containing the data on the max number of leds per channel. Received only {BytesRead} bytes. Will not send data to the controller");
+            }
+            if (ReceiveData[2] != 'A') {
+                throw new Exception($"The {this.GetType().ToString()} did not send a ACK after the data containing the max number of leds per channel. Will not send data to the controller");
+            }
+            int MaxNumberOfLedsPerChannel = ReceiveData[0] * 256 + ReceiveData[1];
+
+            if (NumberOfLedsPerStrip.Any(Nr => Nr > MaxNumberOfLedsPerChannel)) {
+                throw new Exception($"The {this.GetType().ToString()} boards supports up to {MaxNumberOfLedsPerChannel} leds per channel, but you have defined up to {NumberOfLedsPerStrip.Max()} leds per channel. Will not send data to the controller.");
+            }
+
+
+
+            //Set number of leds per channel
+            NumberOfLedsPerChannel = NumberOfLedsPerStrip.Max();
+            ushort NrOfLeds = (ushort)NumberOfLedsPerChannel;
+            byte[] CommandData = new byte[3] { (byte)'L', (byte)(NrOfLeds >> 8), (byte)(NrOfLeds & 255) };
+            ComPort.Write(CommandData, 0, 3);
+            ReceiveData = new byte[1];
+            BytesRead = -1;
+            try {
+                BytesRead = ReadPortWait(ReceiveData, 0, 1);
+            } catch (Exception E) {
+                throw new Exception("Expected 1 bytes after setting the number of leds per channel, but the read operation resulted in a exception. Will not send data to the controller.", E);
+            }
+
+            if (BytesRead != 1 || ReceiveData[0] != (byte)'A') {
+                throw new Exception("Expected a Ack (A) after setting the number of leds per channel, but received no answer or a unexpected answer. Will not send data to the controller.");
+
+            }
+        }
 
         /// <summary>
         /// This method is called when DOF wants to connect to the controller.
@@ -366,12 +584,18 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
             string[] PortNames = SerialPort.GetPortNames();
             if (!PortNames.Any(PN => PN == ComPortName))
             {
-                throw new Exception("The specified Com-Port '{0}' does not exist. Found the following Com-Ports: {1}. Will not send data to the controller.".Build(ComPortName, string.Join(", ", PortNames)));
+                throw new Exception($"The specified Com-Port '{ComPortName}' does not exist. Found the following Com-Ports: {string.Join(", ", PortNames)}. Will not send data to the controller.");
             }
 
+            Log.Write($"Initializing ComPort {ComPortName} with these settings :\n\tBaudRate {ComPortBaudRate}, Parity {ComPortParity}, DataBits {ComPortDataBits}, StopBits {ComPortStopBits}, R/W Timeouts {ComPortTimeOutMs}ms\n\tHandshake Timings : Open {ComPortOpenWaitMs}ms, Loop Start/End {ComPortHandshakeStartWaitMs}/{ComPortHandshakeEndWaitMs}ms, DTR enable {ComPortDtrEnable}");
             ComPort = new SerialPort();
+            ComPort.BaudRate = ComPortBaudRate;
+            ComPort.Parity = ComPortParity;
+            ComPort.DataBits = ComPortDataBits;
+            ComPort.StopBits = ComPortStopBits;
             ComPort.ReadTimeout = ComPortTimeOutMs;
             ComPort.WriteTimeout = ComPortTimeOutMs;
+			
 
             try
             {
@@ -379,22 +603,21 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
             }
             catch (Exception E)
             {
-                throw new Exception("A exception occured while setting the name of the Com-port '{0}'. Found the following Com-Ports: {1}.  Will not send data to the controller.".Build(ComPortName, string.Join(", ", PortNames)), E);
+                throw new Exception($"A exception occurred while setting the name of the Com-port '{ComPortName}'. Found the following Com-Ports: {string.Join(", ", PortNames)}.  Will not send data to the controller.", E);
             }
 
             try
             {
                 ComPort.Open();
+                ComPort.DtrEnable = ComPortDtrEnable;
             }
             catch (Exception E)
             {
-                throw new Exception("A exception occured while trying to open the Com-port '{0}'. Found the following Com-Ports: {1}.  Will not send data to the controller.".Build(ComPortName, string.Join(", ", PortNames)), E);
+                throw new Exception($"A exception occurred while trying to open the Com-port '{ComPortName}'. Found the following Com-Ports: {string.Join(", ", PortNames)}.  Will not send data to the controller.", E);
             }
 
-
-
             //Make sure, the controller is in the expected state (ready to receive commands)
-            Thread.Sleep(50);
+            Thread.Sleep(ComPortOpenWaitMs);
             ComPort.ReadExisting();
 
             bool CommandModeOK = false;
@@ -402,7 +625,7 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
             {
 
                 ComPort.Write(new byte[] { 0 }, 0, 1);
-                Thread.Sleep(20);
+                Thread.Sleep(ComPortHandshakeStartWaitMs);  
                 if (ComPort.BytesToRead > 0)
                 {
                     int Ret = ComPort.ReadByte();
@@ -426,74 +649,25 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
                     //Got no anwser from com port. Mostly likely we are still inside a command which is expecting more data. Send a lot of 0 bytes to get out of this situation.
                     ComPort.Write(new byte[3 * 1000], 0, 3 * 1000);
 
-                    Thread.Sleep(50);
+                    Thread.Sleep(ComPortHandshakeEndWaitMs);
                     //Get rid of all returned data and try again
                     ComPort.ReadExisting();
                 }
             };
             if (!CommandModeOK)
             {
-                Log.Exception("Could not put the controller on com-port {0} into the commandmode. Will not send data to the controller.".Build(ComPortName));
+                Log.Exception($"Could not put the controller on com-port '{ComPortName}' into the commandmode. Will not send data to the controller.");
                 DisconnectFromController();
                 return;
             }
 
 
             //If we reach this point, we know that the controller is ready to accept commands.
+            SetupController();
 
-            //Check max number of leds per channel
-            ComPort.Write(new byte[] { (byte)'M' }, 0, 1);
-            byte[] ReceiveData = new byte[3];
+            byte[] ReceiveData = null;
             int BytesRead = -1;
-
-            try
-            {
-                BytesRead = ReadPortWait(ReceiveData, 0, 3);
-            }
-            catch (Exception E)
-            {
-                throw new Exception("Expected 3 bytes containing data on the max number of leds per channel, but the read operation resulted in a exception. Will not send data to the controller", E);
-            }
-
-
-            if (BytesRead != 3)
-            {
-                throw new Exception("The TeensyStripController did not send the expected 3 bytes containing the data on the max number of leds per channel. Received only {0} bytes. Will not send data to the controller".Build(BytesRead));
-            }
-            if (ReceiveData[2] != 'A')
-            {
-                throw new Exception("The TeensyStripController did not send a ACK after the data containing the max number of leds per channel. Will not send data to the controller");
-            }
-            int MaxNumberOfLedsPerChannel = ReceiveData[0] * 256 + ReceiveData[1];
-
-            if (NumberOfLedsPerStrip.Any(Nr => Nr > MaxNumberOfLedsPerChannel))
-            {
-                throw new Exception("The TeensyStripController boards supports up to {0}} leds per channel, but you have defined up to {1} leds per channel. Will not send data to the controller.".Build(MaxNumberOfLedsPerChannel, NumberOfLedsPerStrip.Max()));
-            }
-
-
-
-            //Set number of leds per channel
-            NumberOfLedsPerChannel = NumberOfLedsPerStrip.Max();
-            ushort NrOfLeds = (ushort)NumberOfLedsPerChannel;
-            byte[] CommandData = new byte[3] { (byte)'L', (byte)(NrOfLeds >> 8), (byte)(NrOfLeds & 255) };
-            ComPort.Write(CommandData, 0, 3);
-            ReceiveData = new byte[1];
-            BytesRead = -1;
-            try
-            {
-                BytesRead = ReadPortWait(ReceiveData, 0, 1);
-            }
-            catch (Exception E)
-            {
-                throw new Exception("Expected 1 bytes after setting the number of leds per channel, but the read operation resulted in a exception. Will not send data to the controller.", E);
-            }
-
-            if (BytesRead != 1 || ReceiveData[0] != (byte)'A')
-            {
-                throw new Exception("Expected a Ack (A) after setting the number of leds per channel, but received no answer or a unexpected answer. Will not send data to the controller.");
-
-            }
+            byte[] CommandData = null;
 
             //Clear the buffer and turn off the leds.
             CommandData = new byte[1] { (byte)'C' };
@@ -506,12 +680,12 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
             }
             catch (Exception E)
             {
-                throw new Exception("Expected 1 bytes after clearing the buffer of the TeensyStripController, but the read operation resulted in a exception. Will not send data to the controller.", E);
+                throw new Exception($"Expected 1 bytes after clearing the buffer of the {this.GetType().ToString()}, but the read operation resulted in a exception. Will not send data to the controller.", E);
             }
 
             if (BytesRead != 1 || ReceiveData[0] != (byte)'A')
             {
-                throw new Exception("Expected a Ack (A) after clearing the buffer of the TeensyStripController, but received no answer or a unexpected answer. Will not send data to the controller.");
+                throw new Exception($"Expected a Ack (A) after clearing the buffer of the {this.GetType().ToString()}, but received no answer or a unexpected answer. Will not send data to the controller.");
             }
 
             CommandData = new byte[1] { (byte)'O' };
@@ -524,12 +698,12 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
             }
             catch (Exception E)
             {
-                throw new Exception("Expected 1 bytes after outputing the buffer of the TeensyStripController to the ledstrips, but the read operation resulted in a exception. Will not send data to the controller.", E);
+                throw new Exception($"Expected 1 bytes after outputting the buffer of the {this.GetType().ToString()} to the ledstrips, but the read operation resulted in a exception. Will not send data to the controller.", E);
             }
 
             if (BytesRead != 1 || ReceiveData[0] != (byte)'A')
             {
-                throw new Exception("Expected a Ack (A) after outputing the buffer of the TeensyStripController to the ledstrips, but received no answer or a unexpected answer. Will not send data to the controller.");
+                throw new Exception($"Expected a Ack (A) after outputting the buffer of the {this.GetType().ToString()} to the ledstrips, but received no answer or a unexpected answer. Will not send data to the controller.");
             }
         }
 
@@ -565,7 +739,7 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
         /// <param name="BufferOffset">The buffer offset.</param>
         /// <param name="NumberOfBytes">The number of bytes.</param>
         /// <returns>Number of bytes read.</returns>
-        private int ReadPortWait(byte[] Buffer, int BufferOffset, int NumberOfBytes)
+        protected int ReadPortWait(byte[] Buffer, int BufferOffset, int NumberOfBytes)
         {
 
             byte[] ReadBuffer = new byte[1];
@@ -580,16 +754,16 @@ namespace DirectOutput.Cab.Out.AdressableLedStrip
                 }
                 catch (TimeoutException TE)
                 {
-                    throw new Exception("A TimeoutException occured while trying to read byte {0} of {1} from Com-Port {2}.".Build(ByteNumber + 1, NumberOfBytes, ComPort.PortName), TE);
+                    throw new Exception($"A TimeoutException occurred while trying to read byte {ByteNumber + 1} of {NumberOfBytes} from Com-Port {ComPort.PortName}.", TE);
                 }
                 catch (Exception E)
                 {
-                    throw new Exception("A exception occured while trying to read byte {0} of {1} from Com-Port {2}.".Build(ByteNumber + 1, NumberOfBytes, ComPort.PortName), E);
+                    throw new Exception($"A exception occurred while trying to read byte {ByteNumber + 1} of {NumberOfBytes} from Com-Port {ComPort.PortName}.", E);
                 }
 
                 if (BytesRead != 1)
                 {
-                    throw new Exception("A exception occured while trying to read byte {0} of {1} from Com-Port {2}. Tried to read 1 byte, but received {3} bytes.".Build(new object[] { ByteNumber + 1, NumberOfBytes, ComPort.PortName, BytesRead }));
+                    throw new Exception($"A exception occurred while trying to read byte {ByteNumber + 1} of {NumberOfBytes} from Com-Port {ComPort.PortName}. Tried to read 1 byte, but received {BytesRead} bytes.");
                 }
 
                 Buffer[BufferOffset + ByteNumber] = ReadBuffer[0];

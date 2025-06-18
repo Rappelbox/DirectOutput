@@ -28,6 +28,30 @@ namespace DirectOutput.Cab.Out
 		/// updater thread should send any necessary initialization commands to the device and change
 		/// the state to Running.  When the state is Running, the thread can simply send value updates
 		/// as normal.
+		/// 
+		/// The point of this state tracking is to avoid sending initialization commands to interfaces
+		/// that aren't in use.  It's possible for a single physical device to appear to DOF as multiple
+		/// software devices, because a single physical device can expose multiple USB interfaces or
+		/// might be accessible via multiple protocols.  The main practical case right now where this
+		/// can occur is the Pinscape controller, which has both an LedWiz emulation mode and its own
+		/// native mode, but the same principle could easily apply to other devices in the future, so 
+		/// it's good to deal with it as a general problem rather than hard-coding something special
+		/// into the LedWiz and/or Pinscape drivers.  At any rate, the problem that can occur when DOF
+		/// sees multiple interfaces for one physical device is that DOF will (without this state
+		/// management) want to send initialization commands to all of the different interfaces it
+		/// sees for that single device, to set all of its ports to a known initial state (usually
+		/// this means just turning off all of the ports).  DOF handles each device interface on a
+		/// separate thread, so the sequencing of those initialization commands across the multiple
+		/// spoofed interfaces to the one device is unpredictable.  So the result can be that thread 
+		/// T1 for interface I1 sends its initialization commands, and then gets some value updates
+		/// from the host to turn on some outputs - turn on the START button light, say - and *then*
+		/// thread T2 for interface I2 sends *its* initialization commands, turning the outputs back
+		/// to their initial OFF state.  So the START button light flashes on for an instant and
+		/// goes right back off.  But if I2 isn't actually used in the configuration, there really
+		/// was never a need for T2 to send the initialization commands.  So we can easily clear up
+		/// this kind of one-device/multiple-interfaces conflict by just waiting to send initialization
+		/// commands until we know that the interface is actually in use in the configuration, by
+		/// waiting until the configuration has sent us at least one explicit value change.
 		/// </summary>
 		protected enum InUseStates { Startup, ValueChanged, Running };
 
@@ -186,7 +210,7 @@ namespace DirectOutput.Cab.Out
             }
             catch (Exception E)
             {
-                string msg = "A exception occured when verifying the settings for {0} {1}: {2}. Cant initialize.".Build(this.GetType().Name, Name, E.Message);
+                string msg = "A exception occurred when verifying the settings for {0} \"{1}\": {2}. Can't initialize.".Build(this.GetType().Name, Name, E.Message);
                 Log.Exception(msg, E);
                 throw new Exception(msg, E);
             }
@@ -194,11 +218,11 @@ namespace DirectOutput.Cab.Out
             {
                 SetupOutputs();
                 InitUpdaterThread();
-                Log.Write("{0} {1} intialized and updater thread started.".Build(this.GetType().Name, Name));
+                Log.Write("{0} \"{1}\" initialized and updater thread started.".Build(this.GetType().Name, Name));
             }
             else
             {
-                Log.Warning("Settings for {0} {1} are not correct. Cant initialize.".Build(this.GetType().Name, Name));
+                Log.Warning("Settings for {0} \"{1}\" are not correct. Can't initialize.".Build(this.GetType().Name, Name));
             }
         }
 
@@ -209,7 +233,7 @@ namespace DirectOutput.Cab.Out
         public virtual void Finish()
         {
             FinishUpdaterThread();
-            Log.Write("{0} {1} finished and updater thread stopped.".Build(this.GetType().Name, Name));
+            Log.Write("{0} \"{1}\" finished and updater thread stopped.".Build(this.GetType().Name, Name));
         }
 
         /// <summary>
@@ -226,7 +250,7 @@ namespace DirectOutput.Cab.Out
 
         /// <summary>
         /// This method must return the number of configured outputs.
-        /// The method is used internaly to determine the number of output objects which have to be setup. 
+        /// The method is used internally to determine the number of output objects which have to be setup. 
         /// Return a fixed value for output controllers which have a fixed number of outputs. Return the value of a configurable property for controllers with a defineable number of outputs.
         /// </summary>
         /// <returns>The number of outputs to be configured.</returns>
@@ -274,13 +298,13 @@ namespace DirectOutput.Cab.Out
                 try
                 {
                     UpdaterThread = new Thread(UpdaterThreadDoIt);
-                    UpdaterThread.Name = "{0} {1} updater thread ".Build(this.GetType().Name, Name);
+                    UpdaterThread.Name = "{0} \"{1}\" updater thread".Build(this.GetType().Name, Name);
                     UpdaterThread.Start();
                 }
                 catch (Exception E)
                 {
-                    Log.Exception("{0} {1}  updater thread could not start.".Build(this.GetType().Name, Name), E);
-                    throw new Exception("{0} {1}  updater thread could not start.".Build(this.GetType().Name, Name), E);
+                    Log.Exception("{0} \"{1}\" updater thread could not start.".Build(this.GetType().Name, Name), E);
+                    throw new Exception("{0} \"{1}\" updater thread could not start.".Build(this.GetType().Name, Name), E);
                 }
             }
         }
@@ -306,8 +330,8 @@ namespace DirectOutput.Cab.Out
                 }
                 catch (Exception E)
                 {
-                    Log.Exception("A error occured during termination of the {0}: {1}.".Build(UpdaterThread.Name), E);
-                    throw new Exception("A error occured during termination of the {0}: {1}.".Build(UpdaterThread.Name), E);
+                    Log.Exception("A error occurred during termination of the {0}: {1}.".Build(UpdaterThread.Name), E);
+                    throw new Exception("A error occurred during termination of the {0}: {1}.".Build(UpdaterThread.Name), E);
                 }
             }
         }
@@ -372,7 +396,7 @@ namespace DirectOutput.Cab.Out
                     catch { }
                 }
 
-                Log.Write("{0} has connected to {1} {2}.".Build(Thread.CurrentThread.Name, this.GetType().Name, Name));
+                Log.Write("{0} has connected to {1} \"{2}\".".Build(Thread.CurrentThread.Name, this.GetType().Name, Name));
 
                 while (KeepUpdaterThreadAlive)
                 {
@@ -409,7 +433,7 @@ namespace DirectOutput.Cab.Out
                         }
                         catch (Exception E)
                         {
-                            Log.Exception("{0} could not send update for {1} {2}: {3}. Will try again.".Build(new object[] { Thread.CurrentThread.Name, this.GetType().Name, Name, E.Message }), E);
+                            Log.Exception("{0} could not send update for {1} \"{2}\": {3}. Will try again.".Build(new object[] { Thread.CurrentThread.Name, this.GetType().Name, Name, E.Message }), E);
                             UpdateOK = false;
                         }
                         if (UpdateOK) break;
@@ -417,7 +441,7 @@ namespace DirectOutput.Cab.Out
 
                     if (!UpdateOK)
                     {
-                        Log.Warning("{0} tries to reconnect to {1} {2}.".Build(Thread.CurrentThread.Name, this.GetType().Name, Name));
+                        Log.Warning("{0} tries to reconnect to {1} \"{2}\".".Build(Thread.CurrentThread.Name, this.GetType().Name, Name));
                         try
                         {
                             DisconnectFromController();
@@ -440,7 +464,7 @@ namespace DirectOutput.Cab.Out
                             }
                             catch { }
                         }
-                        Log.Write("{0} has reconnected to {1} {2}.".Build(Thread.CurrentThread.Name, this.GetType().Name, Name));
+                        Log.Write("{0} has reconnected to {1} \"{2}\".".Build(Thread.CurrentThread.Name, this.GetType().Name, Name));
                         Thread.Sleep(100);
                         try
                         {
@@ -448,7 +472,7 @@ namespace DirectOutput.Cab.Out
                         }
                         catch (Exception E)
                         {
-                            Log.Exception("{0} could still not send update for {1} {2}: {3}. Thread will quit.".Build(new object[] { Thread.CurrentThread.Name, this.GetType().Name, Name, E.Message }), E);
+                            Log.Exception("{0} could still not send update for {1} \"{2}\": {3}. Thread will quit.".Build(new object[] { Thread.CurrentThread.Name, this.GetType().Name, Name, E.Message }), E);
                             try
                             {
                                 DisconnectFromController();
@@ -481,7 +505,7 @@ namespace DirectOutput.Cab.Out
                 }
                 catch (Exception E)
                 {
-                    Log.Exception("A exception occured in {0} while trying to turn of all outputs for {1} {2}".Build(Thread.CurrentThread.Name, this.GetType().Name, Name), E);
+                    Log.Exception("A exception occurred in {0} while trying to turn of all outputs for {1} \"{2}\"".Build(Thread.CurrentThread.Name, this.GetType().Name, Name), E);
                 }
                 try
                 {
@@ -489,11 +513,11 @@ namespace DirectOutput.Cab.Out
                 }
                 catch {}
 
-                Log.Write("{0} has disconnected from {1} {2} and will terminate.".Build(Thread.CurrentThread.Name, this.GetType().Name, Name));
+                Log.Write("{0} has disconnected from {1} \"{2}\" and will terminate.".Build(Thread.CurrentThread.Name, this.GetType().Name, Name));
             }
             catch (Exception EU)
             {
-                Log.Exception("A exception has occured in {0}. Thread will quit. Message: {1}".Build(Thread.CurrentThread.Name, EU.Message), EU);
+                Log.Exception("A exception has occurred in {0}. Thread will quit. Message: {1}".Build(Thread.CurrentThread.Name, EU.Message), EU);
             }
 
         }

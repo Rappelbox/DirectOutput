@@ -44,21 +44,14 @@ namespace DirectOutput.LedControl.Setup
         /// <param name="RomName">Name of the rom to be used for the setup.</param>
         public void Setup(LedControlConfigList LedControlConfigList, DirectOutput.Table.Table Table, Cabinet Cabinet, string RomName)
         {
-            Dictionary<int, TableConfig> TableConfigDict = LedControlConfigList.GetTableConfigDictonary(RomName);
-
-            string IniFilePath = "";
-            if (LedControlConfigList.Count > 0)
-            {
-                IniFilePath = LedControlConfigList[0].LedControlIniFile.Directory.FullName;
-            }
-
+            Dictionary<int, TableConfig> TableConfigDict = LedControlConfigList.GetTableConfigDictionary(RomName);
             Dictionary<int, Dictionary<int, IToy>> ToyAssignments = SetupCabinet(TableConfigDict, Cabinet);
 
-
-
-            SetupTable(Table, TableConfigDict, ToyAssignments, IniFilePath);
-
-
+			if (LedControlConfigList.Count > 0 && LedControlConfigList[0].LedControlIniFile != null)
+			{
+				string IniFilePath = LedControlConfigList[0].LedControlIniFile.Directory.FullName;
+				SetupTable(Table, TableConfigDict, ToyAssignments, IniFilePath);
+			}
         }
 
         private void SetupTable(Table.Table Table, Dictionary<int, TableConfig> TableConfigDict, Dictionary<int, Dictionary<int, IToy>> ToyAssignments, string IniFilePath)
@@ -113,7 +106,7 @@ namespace DirectOutput.LedControl.Setup
                                                 }
                                             }
 
-                                            Log.Debug("Setting up shape effect for area. L: {0}, T: {1}, W: {2}, H: {3}".Build(new object[] { TCS.AreaLeft, TCS.AreaTop, TCS.AreaWidth, TCS.AreaHeight }));
+                                            Log.Instrumentation("MX", "Setting up shape effect for area. L: {0}, T: {1}, W: {2}, H: {3}, Name: {4}".Build(new object[] { TCS.AreaLeft, TCS.AreaTop, TCS.AreaWidth, TCS.AreaHeight, TCS.ShapeName }));
                                             if (ActiveColor != null)
                                             {
                                                 RGBAColor InactiveColor = ActiveColor.Clone();

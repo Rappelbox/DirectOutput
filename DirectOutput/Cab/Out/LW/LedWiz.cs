@@ -81,37 +81,45 @@ namespace DirectOutput.Cab.Out.LW
         private bool MinCommandIntervalMsSet = false;
 
         /// <summary>
-        /// Gets or sets the mininimal interval between command in miliseconds.
+        /// Gets or sets the minimum interval between command in milliseconds.
         /// 
-        /// The purpose of this minimium interval is to work around a serious design flaw in the
-        /// LedWiz hardware.  The flaw makes the LedWiz misinterpret USB packets if they arrive
+        /// The purpose of this minimum interval is to work around a design flaw in the
+        /// LedWiz firmware.  The flaw makes the LedWiz misinterpret USB packets if they arrive
         /// too quickly.  Observationally, sending packets too quickly makes the LedWiz fire
         /// ports and change brightness levels apparently at random.  It was initially thought
         /// that this was due to lost USB packets or some such hand-wavy gremlin issue, but on
         /// closer inspection, it's not a USB issue at all, but a reproducible and demonstrable
         /// LedWiz defect.  We haven't attempted to reverse-engineer the LedWiz firmware to 
-        /// determine the exact defect, but from testing it's pretty apparent what's going on:
-        /// they failed to protect against concurrent access by the LedWiz firmware and its USB
-        /// wire interface.  If you contrive to send the LedWiz a sequence of packets with
-        /// certain bit patterns, you can demonstrate that the LedWiz incorrectly reads the
-        /// bytes from a new packet using the command code from the prior packet.  This makes
-        /// it misinterpret on/off codes as brightness codes, and vice versa, which leads to
-        /// the observed "random" firing.  It's not actually random - it's quite deterministic -
-        /// but it appears to be random because it's not at all what was intended.
+        /// pinpoint the exact machine-code instruction where things go wrong, but from careful
+        /// observation, it's pretty obvious what's going on: the software fails to protect a
+        /// shared data structure containing the incoming command bytes against concurrent read
+        /// access from the code that updates the ports, and write access from the code that
+        /// processes incoming USB packets.  At a guess, a new incoming USB packet is processed
+        /// in an interrupt handler that writes the packet into a memory location, and the code
+        /// that updates the ports runs at user level, and reads from the same location.  If
+        /// the port update code is interrupted by an incoming packet part of the way through
+        /// the port list, it will incorrectly update the ports with the new command bytes.
+        /// The new packet might contain an entirely different command type that requires the
+        /// bytes to be interpreted as something other than port levels, but the port update
+        /// code doesn't know that, so it just keeps writing what's now garbage data to the
+        /// ports.  You can demonstrate this deterministically by sending contrived sequences 
+        /// of bit patterns to the device, to make the device misinterpret the bytes of a new
+        /// packet using the command code from the previous packet.
         /// 
         /// The workaround is to deliberately throttle the rate of USB packets that we send 
-        /// to the device.  Unfortunately, there's no universal "right" delay rate, because 
-        /// the Windows USB drivers and PC USB hardware cause a lot of variability in the
-        /// actual packet delivery timing.  I suspect based on observations that Windows has 
-        /// some elevator-algorithm optimizations in its USB packet sequencing, to group 
-        /// packets to the same device together, which seriously confounds our attempts to 
-        /// control delivery timing.  To make matters worse, other unrelated applications
-        /// can even somehow have an effect on this (e.g., running PinballX affects USB
-        /// packet timing).  Anyway, due to all of these uncontrollable external factors, 
-        /// there's no minimum timing that's guaranteed to work.  This is one of those 
-        /// cases where you have to find a workable delay time in each specific system
-        /// experimentally (and you might even have to adjust it from time to time as
-        /// your software environment changes).
+        /// to the device.  Unfortunately, the best we can do is reduce the probability of
+        /// triggering the bug.  We can't eliminate it entirely, because we don't have
+        /// complete control over the timing of the physical USB packet delivery; the
+        /// Windows USB driver and the hardware make that somewhat variable.  The Windows
+        /// USB driver seems to deliberately manipulate packet timing, probably as an
+        /// optimization to maximize bus bandwidth by spreading packets across devices
+        /// and ports.  To make matters worse, other unrelated applications can have an
+        /// effect on this (e.g., running PinballX affects USB packet timing).  Due to all
+        /// of these uncontrollable external factors, there's no minimum timing that's 
+        /// guaranteed to work.  This is one of those cases where you have to find a 
+        /// workable delay time in each specific system experimentally, and you might
+        /// even have to adjust it if your software environment changes.  Perhaps the best
+        /// solution is to replace your LedWiz with a better device.
         /// 
         /// The current default is 10ms.  The old default was 1ms, but I've [mjr] increased
         /// it to make it more likely to "just work" on most systems.  Delays below 5ms
@@ -123,6 +131,13 @@ namespace DirectOutput.Cab.Out.LW
         /// perceptible latency or make brightness ramps any less smooth.  And of course 
         /// anyone who does find the longer time to be somehow undesirable can override 
         /// it via the global config.
+        /// 
+        /// Note that the timing bug ONLY affects GENUINE LEDWIZ DEVICES.  It does NOT
+        /// affect the Pinscape LedWiz emulation, nor does it affect any of the open-source
+        /// LedWiz clones.  It has nothing to do with the HID interface or the protocol;
+        /// it's just a bug in the genuine LedWiz's firmware.  If you're using a device 
+        /// that's only PRETENDING to be an LedWiz, such as one of the Arduino LedWiz clones,
+        /// your device doesn't have the bug and shouldn't need the timing workaround.
         /// </summary>
         /// <value>
         /// The minimum interval between command in milliseconds
@@ -159,7 +174,7 @@ namespace DirectOutput.Cab.Out.LW
         /// <param name="Cabinet">The Cabinet object which is using the LedWiz instance.</param>
         public override void Init(Cabinet Cabinet)
         {
-            Log.Debug("Initializing LedWiz Nr. {0:00}".Build(Number));
+            Log.Write("Initializing LedWiz Nr. {0:00}".Build(Number));
             AddOutputs();
             if (!MinCommandIntervalMsSet && Cabinet.Owner.ConfigurationSettings.ContainsKey("LedWizDefaultMinCommandIntervalMs") && Cabinet.Owner.ConfigurationSettings["LedWizDefaultMinCommandIntervalMs"] is int)
             {
@@ -178,7 +193,7 @@ namespace DirectOutput.Cab.Out.LW
         /// </summary>
         public override void Finish()
         {
-            Log.Debug("Finishing LedWiz Nr. {0:00}".Build(Number));
+            Log.Write("Finishing LedWiz Nr. {0:00}".Build(Number));
             LedWizUnits[Number].Finish();
             LedWizUnits[Number].ShutdownLighting();
             Log.Write("LedWiz Nr. {0:00} finished and updater thread stopped.".Build(Number));
@@ -379,33 +394,41 @@ namespace DirectOutput.Cab.Out.LW
 									{
 										// presume this is an LedWiz unit, then look for reasons it's not
 										bool ok = true;
+                                        string okBecause = null;
 
 										// read the product name string
 										String name = "<not available>";
-										byte[] nameBuf = new byte[128];
-										if (HIDImports.HidD_GetProductString(fp, nameBuf, 128))
+										byte[] nameBuf = new byte[256];
+										if (HIDImports.HidD_GetProductString(fp, nameBuf, (uint)nameBuf.Length))
 											name = System.Text.Encoding.Unicode.GetString(nameBuf).TrimEnd('\0');
 
 										// read the manufacturer name string
 										String manuf = "<not available>";
-										byte[] manufBuf = new byte[128];
-										if (HIDImports.HidD_GetManufacturerString(fp, manufBuf, 128))
+										byte[] manufBuf = new byte[256];
+										if (HIDImports.HidD_GetManufacturerString(fp, manufBuf, (uint)manufBuf.Length))
 											manuf = System.Text.Encoding.Unicode.GetString(manufBuf).TrimEnd('\0');
 
-										Log.Write("LedWiz-like device at VID=" + (ushort)attrs.VendorID
-											+ ", PID=" + (ushort)attrs.ProductID
-											+ ", product string=" + name
-											+ ", manufacturer string=" + manuf);
+                                        // For debugging, log the HID device ID details.  Developers creating LedWiz
+                                        // clones might find this useful if DOF isn't recognizing their device as an
+                                        // LedWiz, so that they can confirm that the device is at least showing up in
+                                        // the HID enumeration, and to help narrow down why the recognition tests fail.
+                                        Log.Instrumentation("LedWizDiscovery",
+                                            $"Scanning HID at VID/PID: {attrs.VendorID:X4}/{attrs.ProductID:X4}, "
+                                            + $"product string: {name}, manufacturer: {manuf}");
 
-										// Check for the vendor code
-										if ((ushort)attrs.VendorID == 0xFAFA)
+										// Check the vendor code (and possibly the product string) to see
+                                        // if this device's ID codes match the profile for an LedWiz or a
+                                        // known clone.
+										if (attrs.VendorID == 0xFAFA)
 										{
-											// original LedWiz vendor ID
+                                            // original LedWiz vendor ID
+                                            okBecause = "recognized by LedWiz vendor ID";
 										}
-										else if ((ushort)attrs.VendorID == 0x20A0
+										else if (attrs.VendorID == 0x20A0
 											&& Regex.IsMatch(manuf, @"(?i)zebsboards"))
 										{
-											// Zeb's plunger device VID, and the product string matches
+                                            // Zeb's plunger device VID, and the product string matches
+                                            okBecause = "recognized by ZebsBoards vendor ID and manufacturer string";
 										}
 										else
 										{
@@ -413,7 +436,11 @@ namespace DirectOutput.Cab.Out.LW
 											ok = false;
 										}
 
-										// check that the PID is in range for an LedWiz
+										// Check that the PID is in range for an LedWiz.  GGG assigned
+                                        // a range of 16 PIDs in the VID=FAFA space to the LedWiz,
+                                        // 00F0..00FF.  The PID also has significance as the "unit
+                                        // number", to distinguish multiple LedWiz units in the same
+                                        // system when addressing output commands to a device.
 										ok &= (attrs.ProductID >= 0x00F0 && attrs.ProductID < 0x00FF);
 
 										// Infer the unit number from the product ID.  The product ID
@@ -444,11 +471,6 @@ namespace DirectOutput.Cab.Out.LW
 											// get the device caps
 											HIDImports.HIDP_CAPS caps = new HIDImports.HIDP_CAPS();
 											HIDImports.HidP_GetCaps(ppdata, ref caps);
-
-											Log.Write("HID caps: usage page=" + caps.UsagePage
-												+ ", usage=" + caps.Usage
-												+ ", number of link collection nodes=" + caps.NumberLinkCollectionNodes
-												+ ", output report byte length=" + caps.OutputReportByteLength);
 
 											// Check that we have the expected output report length
 											ok &= (caps.OutputReportByteLength == 9);
@@ -493,19 +515,20 @@ namespace DirectOutput.Cab.Out.LW
 												if (d.unitNo == unitNo)
 												{
 													ok = false;
-													Log.Warning("LedWiz device \"" + name + "\" (VID "
-														+ (ushort)attrs.VendorID + ", PID "
-														+ (ushort)attrs.ProductID + ", LedWiz unit #" + unitNo
-														+ ") conflicts with previously enumerated device \""
-														+ d.productName + "\"; \"" 
-														+ name + "\" will be ignored for this session");
+                                                    Log.Warning($"LedWiz discovery: \"{name}\" (VID/PID {attrs.VendorID:X4}/{attrs.ProductID:X4}, "
+                                                        + $"LedWiz unit #{unitNo}) passed LedWiz recognition tests, but its unit number conflicts with the "
+                                                        + $"previously discovered device \"{d.productName}\"; \"{name}\" will be ignored for this session");
 												}
 											}
 										}
 
-										// if we passed all tests, add this device to the list
-										if (ok)
-											deviceList.Add(new LWDEVICE(unitNo, diDetail.DevicePath, name));
+                                        // if we passed all tests, add this device to the list
+                                        if (ok)
+                                        {
+                                            Log.Write($"LedWiz discovery: recognition tests passed for \"{name}\" (VID/PID {attrs.VendorID:X4}/{attrs.ProductID:X4}, "
+                                                + $"manufacturer {manuf}) as LW unit #{unitNo}; {okBecause}");
+                                            deviceList.Add(new LWDEVICE(unitNo, diDetail.DevicePath, name));
+                                        }
 									}
 
 									// done with the file handle
@@ -934,10 +957,31 @@ namespace DirectOutput.Cab.Out.LW
                     {
                         if (IsPresent)
                         {
-							// If in ValueChanged state, initialize the LedWiz unit to the
-							// base state, with all switches (SBA) OFF and all profile levels
-							// (PBA) set to 100% (brightness level 49).
-							if (InUseState == InUseStates.Startup)
+							// Check our state:
+							//
+							// Startup means that we've detected the device in the system, but we
+							// haven't received any value changes for the device yet.  DO NOT send
+							// any commands at all to the device in this state, because we have no
+							// reason to think that the configuration uses this device at all.  It's
+							// particularly important NOT to send any commands to the device when we
+							// don't have explicit value changes to send, because the LedWiz interface
+							// that we're addressing might be an EMULATED interface from another type
+							// of physical device that also exposes its own NATIVE interface under a
+							// different DOF LedWiz-Equivalent ID.  Pinscape Controllers do this, for
+							// example.  If we were to send initialization commands without knowing
+							// that the LedWiz interface is actually in use, we could cause a conflict
+							// by turning off ports that the other interface actually wanted to be on.
+							//
+							// ValueChanged means that we've received at least one explicit value
+							// update from the host program while we were in the Startup state.  This
+							// means that we haven't yet sent any commands to the physical LedWiz yet.
+							// Thus we have to intialize the LedWiz and send the value updates.  We
+							// transition into Running state at this point to indicate that we're
+							// actively talking to the LedWiz.
+							//
+							// Running means that we've already started talking to the LedWiz, so we
+							// should just send any further value updates since the last update.
+							if (InUseState == InUseStates.ValueChanged)
 							{
 								// send the initialization commands
 								SBA(new byte[] { 0, 0, 0, 0 });
@@ -955,7 +999,7 @@ namespace DirectOutput.Cab.Out.LW
                     }
                     catch (Exception E)
                     {
-                        Log.Exception("A error occured when updating LedWiz Nr. {0}".Build(Number), E);
+                        Log.Exception("A error occurred when updating LedWiz Nr. {0}".Build(Number), E);
                         //Pinball.ThreadInfoList.RecordException(E);
                         FailCnt++;
 
@@ -1128,10 +1172,10 @@ namespace DirectOutput.Cab.Out.LW
 						// if that failed, give it a moment before trying again
 						Thread.Sleep(RetryWait[tries]);
 					}
-					Log.Write(String.Format("LedWiz {0} WriteUSB failed after {1} retries", Number, RetryWait.Length));
+					Log.Error(String.Format("LedWiz {0} WriteUSB failed after {1} retries", Number, RetryWait.Length));
 				}
 				else
-					Log.Write(String.Format("LedWiz {0} WriteUSB has no file handle", Number));
+					Log.Error(String.Format("LedWiz {0} WriteUSB has no file handle", Number));
 			}
 
             private bool IsPresent

@@ -57,7 +57,13 @@ namespace DirectOutput.Cab.Out
                     if (T != null)
                     {
                         XmlSerializer serializer = new XmlSerializer(T);
-                        IOutputController O = (IOutputController)serializer.Deserialize(reader);
+                        IOutputController O = null;
+                        try {
+                            O = (IOutputController)serializer.Deserialize(reader);
+                        } catch (Exception E) {
+                            Log.Exception("DirectOutput framework has encountered a exception during initialization.", E);
+                            throw new Exception("DirectOutput framework has encountered a exception during initialization.\n Inner exception: {0}".Build(E.Message), E);
+                        }
                         if (!Contains(O.Name))
                         {
                             //Log.Write("OutputControlleRList.ReadXml...adding: " + O.Name);
@@ -96,12 +102,12 @@ namespace DirectOutput.Cab.Out
         /// <param name="Cabinet">The Cabinet object which is using the list of IOutputController objects.</param>
         public void Init(Cabinet Cabinet)
         {
-            Log.Debug("Initializing output controllers");
+            Log.Write("Initializing output controllers");
             foreach (IOutputController OC in this)
             {
                 OC.Init(Cabinet);
             }
-            Log.Debug("Output controllers initialized");
+            Log.Write("Output controllers initialized");
         }
 
         /// <summary>
@@ -109,12 +115,12 @@ namespace DirectOutput.Cab.Out
         /// </summary>
         public void Finish()
         {
-            Log.Debug("Finishing output controllers");
+            Log.Write("Finishing output controllers");
             foreach (IOutputController OC in this)
             {
                 OC.Finish();
             }
-            Log.Debug("Output controllers finished");
+            Log.Write("Output controllers finished");
         }
 
         /// <summary>

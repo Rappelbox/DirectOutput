@@ -42,13 +42,13 @@ namespace DirectOutput.Cab.Out.PS
         #region Number
 
 
-        private object NumberUpdateLocker = new object();
+        private readonly object NumberUpdateLocker = new object();
         private int _Number = -1;
 
         /// <summary>
         /// Gets or sets the unit number of the controller.<br />
         /// The unit number must be unique.<br />
-        /// Setting changes the Name property, if it is blank or if the Name coresponds to "Pinscape Controller {Number}".
+        /// Setting changes the Name property, if it is blank or if the Name corresponds to "Pinscape Controller {Number}".
         /// </summary>
         /// <value>
         /// The unique unit number of the controller (Range 1-16).
@@ -96,25 +96,26 @@ namespace DirectOutput.Cab.Out.PS
         private int _MinCommandIntervalMs = 1;
         private bool MinCommandIntervalMsSet = false;
 
-        /// <summary>
-        /// Gets or sets the mininimal interval between command in miliseconds (Default: 1ms).
-        /// The minimum message interval at the USB level is 1ms, but real LedWiz units can reportedly miss messages on some systems if messages are
-        /// sent at full USB speed.  The underlying causes aren't clear as there are a lot of black boxes in the communication path (the motherboard
-        /// USB hardware, the Windows USB drivers, the Windows HID drivers, USB hubs, and the LedWiz itself), but the assumption is that it's
-        /// timing-related, so the LedWiz version uses this parameter to throttle the data rate by increasing the time between consecutive messages
-        /// going across the wire to the LedWiz.  Since the Pinscape controller is all open source, the device side of the path is under our control,
-        /// unlike the LedWiz, so if we ever did run into any similar problems, we could potentially fix them more cleanly by fixing whatever the real
-        /// problem is on the device side of the USB path.  Even so, we'll also provide this parameter in case it turns out to be useful.
-        ///
-        /// We recommend using the default interval of 1 ms, and only increasing this if problems occur (Toys which are sometimes not reacting, random
-        /// knocks of replay knocker or solenoids).  Better yet, any such problems should be investigated first on the Pinscape controller side to see if
-        /// they can be addressed more cleanly there.
-        /// </summary>
-        /// <value>
-        /// The mininimal interval between command in miliseconds.  The default is 1ms, which is also the minimum, since it's
-        /// the fastest that USB allows at the hardware protocol level.
-        /// </value>
-        public int MinCommandIntervalMs
+		/// <summary>
+		/// Gets or sets the minimum interval between command in milliseconds (default: 1 ms).<br/>
+		/// This was originally added as a stab-in-the-dark workaround for problems that were not understood
+		/// at the time, but which were ultimately traced to bugs in the firmware of genuine LedWiz devices.
+		/// It was incorrectly believed at the time that the bug was related to the Windows USB HID driver,
+		/// so a global message rate throttle was added as a general feature of all HID-based devices.  The
+		/// only device that ever actually needed it was the LedWiz, because the bug never had anything to 
+		/// do with DOF or the Windows HID driver or anything else on the PC side.  It's still in here as a
+		/// legacy, but devices other than genuine LedWiz's don't need it.
+		/// 
+		/// Note that the bug we're referring only affects GENUINE LedWiz devices.  The Pinscape LedWiz
+		/// emulation doesn't have the bug, nor do any of the open-source LedWiz clone projects for
+		/// Arduino or other devices.  The timing workaround wouldn't be needed for a Pinscape unit EVEN
+		/// IF we talked to it in LedWiz mode, which we don't (DOF uses Pinscape's custom extended protocol).
+		/// </summary>
+		/// <value>
+		/// The minimal interval between command in milliseconds.  The default is 1ms, which is also the minimum, since it's
+		/// the fastest that USB allows at the hardware protocol level.
+		/// </value>
+		public int MinCommandIntervalMs
         {
             get { return _MinCommandIntervalMs; }
             set
@@ -126,11 +127,11 @@ namespace DirectOutput.Cab.Out.PS
 
         #endregion
         
-        #region IOutputcontroller implementation
+        #region IOutputController implementation
 
         /// <summary>
         /// Initializes the Pinscape object.<br />
-        /// This method does also start the workerthread which does the actual update work when Update() is called.<br />
+        /// This method also starts the worker thread which does the actual update work when Update() is called.<br />
         /// This method should only be called once. Subsequent calls have no effect.
         /// </summary>
         /// <param name="Cabinet">The Cabinet object which is using the Pinscape instance.</param>
@@ -139,8 +140,8 @@ namespace DirectOutput.Cab.Out.PS
             // get the minimum update interval from the global config
             if (!MinCommandIntervalMsSet
                 && Cabinet.Owner.ConfigurationSettings.ContainsKey("PinscapeDefaultMinCommandIntervalMs")
-                && Cabinet.Owner.ConfigurationSettings["PinscapeDefaultMinCommandIntervalMs"] is int)
-                MinCommandIntervalMs = (int)Cabinet.Owner.ConfigurationSettings["PinscapeDefaultMinCommandIntervalMs"];
+				&& Cabinet.Owner.ConfigurationSettings["PinscapeDefaultMinCommandIntervalMs"] is int minInterval)
+                MinCommandIntervalMs = minInterval;
 
             // do the base class work
             base.Init(Cabinet);
@@ -148,7 +149,7 @@ namespace DirectOutput.Cab.Out.PS
 
         /// <summary>
         /// Finishes the Pinscape object.<br/>
-        /// Finish does also terminate the workerthread for updates.
+        /// Finish also terminates the worker thread for updates.
         /// </summary>
         public override void Finish()
         {
@@ -260,7 +261,7 @@ namespace DirectOutput.Cab.Out.PS
                 return numOutputs;
             }
 
-            public Device(IntPtr fp, string path, string name, short vendorID, short productID, short version)
+            public Device(IntPtr fp, string path, string name, ushort vendorID, ushort productID, short version, uint inputReportByteLength)
             {
                 // remember the settings
                 this.fp = fp;
@@ -270,6 +271,7 @@ namespace DirectOutput.Cab.Out.PS
                 this.productID = productID;
                 this.version = version;
                 this.plungerEnabled = true;
+                this.inputReportByteLength = inputReportByteLength;
 
                 // presume we have the standard LedWiz-compatible complement of 32 outputs
                 this.numOutputs = 32;
@@ -278,7 +280,7 @@ namespace DirectOutput.Cab.Out.PS
                 // ID (it's the bottom 4 bits of the ID value - this is zero-based, so add one to get our
                 // 1-based value for UI reporting).  If we're using our private vendor/product ID, the unit
                 // number must be obtained from the configuration report below.
-                if ((ushort)vendorID == 0xFAFA && (productID & 0xFFF0) == 0x00F0)
+                if (vendorID == 0xFAFA && (productID & 0xFFF0) == 0x00F0)
                     this.unitNo = (short)((productID & 0x000f) + 1);
                 else
                     this.unitNo = 1;
@@ -287,7 +289,7 @@ namespace DirectOutput.Cab.Out.PS
                 byte[] buf = ReadUSB();
                 if (buf != null)
                 {
-                    // parse the reponse
+                    // parse the response
                     this.plungerEnabled = (buf[1] & 0x01) != 0;
                 }
 
@@ -319,27 +321,33 @@ namespace DirectOutput.Cab.Out.PS
 				}
             }
 
+			// Does this device emulate a given LedWiz unit?  The unit is identified by
+			// the nominal user-visible numbering scheme where the first unit at VID/PID
+			// FAFA/00F0 is LedWiz #1.
+			public bool IsLedWizEmulator(int unitNum)
+			{
+				return (ushort)vendorID == 0xFAFA && productID == 0x00F1 + unitNum;
+			}
+
 			private System.Threading.NativeOverlapped ov;
 			public byte[] ReadUSB()
 			{
 				for (int tries = 0 ; tries < 3 ; ++tries)
 				{
-					const int rptLen = 15;
-					byte[] buf = new byte[rptLen];
+					byte[] buf = new byte[inputReportByteLength];
 					buf[0] = 0x00;
-					uint actual;
-					if (HIDImports.ReadFile(fp, buf, rptLen, out actual, ref ov) == 0)
+					if (HIDImports.ReadFile(fp, buf, inputReportByteLength, out uint actual, ref ov) == 0)
 					{
 						// if the error is 6 ("invalid handle"), try re-opening the device
 						if (TryReopenHandle())
 							continue;
 
-						Log.Write("Pinscape Controller USB error reading from device: " + GetLastWin32ErrMsg());
+						Log.Error("Pinscape Controller USB error reading from device: " + GetLastWin32ErrMsg());
 						return null;
 					}
-					else if (actual != rptLen)
+					else if (actual != inputReportByteLength)
 					{
-						Log.Write("Pinscape Controller USB error reading from device: not all bytes received");
+						Log.Error("Pinscape Controller USB error reading from device: not all bytes received");
 						return null;
 					}
 					else
@@ -363,7 +371,7 @@ namespace DirectOutput.Cab.Out.PS
 				if (Marshal.GetLastWin32Error() == 6)
 				{
 					// try opening a new handle on the device path
-					Log.Write("Pinscape Controller: invalid handle on read; trying to reopen handle");
+					Log.Error("Pinscape Controller: invalid handle on read; trying to reopen handle");
 					IntPtr fp2 = OpenFile();
 
 					// if that succeeded, replace the old handle with the new one and retry the read
@@ -383,9 +391,9 @@ namespace DirectOutput.Cab.Out.PS
 
 			public String GetLastWin32ErrMsg()
 			{
-				int errno = Marshal.GetLastWin32Error();
+				int errNo = Marshal.GetLastWin32Error();
 				return String.Format("{0} (Win32 error {1})",
-									 new System.ComponentModel.Win32Exception(errno).Message, errno);
+									 new System.ComponentModel.Win32Exception(errNo).Message, errNo);
 			}
 
 			public void AllOff()
@@ -407,19 +415,18 @@ namespace DirectOutput.Cab.Out.PS
 			{
 				for (int tries = 0; tries < 3; ++tries)
 				{
-					UInt32 actual;
-					if (HIDImports.WriteFile(fp, buf, 9, out actual, ref ov) == 0)
+					if (HIDImports.WriteFile(fp, buf, 9, out uint actual, ref ov) == 0)
 					{
 						// try re-opening the handle, if it's an "invalid handle" error
 						if (TryReopenHandle())
 							continue;
 
-						Log.Write("Pinscape Controller USB error sending request to device: " + GetLastWin32ErrMsg());
+						Log.Error("Pinscape Controller USB error sending request to device: " + GetLastWin32ErrMsg());
 						return false;
 					}
 					else if (actual != 9)
 					{
-						Log.Write("Pinscape Controller USB error sending request: not all bytes sent");
+						Log.Error("Pinscape Controller USB error sending request: not all bytes sent");
 						return false;
 					}
 					else
@@ -435,12 +442,13 @@ namespace DirectOutput.Cab.Out.PS
 			public IntPtr fp;
 			public string path;
 			public string name;
-			public short vendorID;
-			public short productID;
+			public ushort vendorID;
+			public ushort productID;
 			public short version;
 			public short unitNo;
 			public bool plungerEnabled;
 			public int numOutputs;
+            public uint inputReportByteLength;
 		}
 
 		#endregion
@@ -463,9 +471,8 @@ namespace DirectOutput.Cab.Out.PS
 			List<Device> devices = new List<Device>();
 
 			// get the list of devices matching the HID class GUID
-			Guid guid;
-			HIDImports.HidD_GetHidGuid(out guid);
-			IntPtr hdev = HIDImports.SetupDiGetClassDevs(ref guid, null, IntPtr.Zero, HIDImports.DIGCF_DEVICEINTERFACE);
+			HIDImports.HidD_GetHidGuid(out Guid guid);
+			IntPtr hDevice = HIDImports.SetupDiGetClassDevs(ref guid, null, IntPtr.Zero, HIDImports.DIGCF_DEVICEINTERFACE);
 
 			// set up the attribute structure buffer
 			HIDImports.SP_DEVICE_INTERFACE_DATA diData = new HIDImports.SP_DEVICE_INTERFACE_DATA();
@@ -473,17 +480,16 @@ namespace DirectOutput.Cab.Out.PS
 
 			// read the devices in our list
 			for (uint i = 0;
-				 HIDImports.SetupDiEnumDeviceInterfaces(hdev, IntPtr.Zero, ref guid, i, ref diData);
+				 HIDImports.SetupDiEnumDeviceInterfaces(hDevice, IntPtr.Zero, ref guid, i, ref diData);
 				 ++i)
 			{
 				// get the size of the detail data structure
-				UInt32 size = 0;
-				HIDImports.SetupDiGetDeviceInterfaceDetail(hdev, ref diData, IntPtr.Zero, 0, out size, IntPtr.Zero);
+				HIDImports.SetupDiGetDeviceInterfaceDetail(hDevice, ref diData, IntPtr.Zero, 0, out UInt32 size, IntPtr.Zero);
 
 				// now actually read the detail data structure
 				HIDImports.SP_DEVICE_INTERFACE_DETAIL_DATA diDetail = new HIDImports.SP_DEVICE_INTERFACE_DETAIL_DATA();
 				diDetail.cbSize = (IntPtr.Size == 8) ? (uint)8 : (uint)5;
-				if (HIDImports.SetupDiGetDeviceInterfaceDetail(hdev, ref diData, ref diDetail, size, out size, IntPtr.Zero))
+				if (HIDImports.SetupDiGetDeviceInterfaceDetail(hDevice, ref diData, ref diDetail, size, out size, IntPtr.Zero))
 				{
 					// create a file handle to access the device
 					IntPtr fp = HIDImports.CreateFile(
@@ -523,12 +529,12 @@ namespace DirectOutput.Cab.Out.PS
 						// the interface, so we can determine which interface we're looking
 						// at by checking this information.  Start by getting the preparsed
 						// data from the Windows HID driver.
-                        IntPtr ppdata;
-                        if (ok && HIDImports.HidD_GetPreparsedData(fp, out ppdata))
+                        uint inputReportByteLength = 0;
+                        if (ok && HIDImports.HidD_GetPreparsedData(fp, out IntPtr preparsedData))
                         {
                             // get the device caps
                             HIDImports.HIDP_CAPS caps = new HIDImports.HIDP_CAPS();
-                            HIDImports.HidP_GetCaps(ppdata, ref caps);
+                            HIDImports.HidP_GetCaps(preparsedData, ref caps);
 
 							// This Pinscape interface accepts output controller commands only
 							// if it's the joystick type (usage page 1 == generic desktop, usage
@@ -538,8 +544,11 @@ namespace DirectOutput.Cab.Out.PS
 							// accept the output controller commands.
                             ok &= (caps.UsagePage == 1 && (caps.Usage == 4 || caps.Usage == 0));
 
+                            // remember the input report byte length
+                            inputReportByteLength = caps.InputReportByteLength;
+
                             // done with the preparsed data
-                            HIDImports.HidD_FreePreparsedData(ppdata);
+                            HIDImports.HidD_FreePreparsedData(preparsedData);
                         }
 
                         // If we passed all tests, this is the output controller interface for
@@ -547,7 +556,7 @@ namespace DirectOutput.Cab.Out.PS
                         if (ok)
 						{
 							// add the device to our list
-							devices.Add(new Device(fp, diDetail.DevicePath, name, attrs.VendorID, attrs.ProductID, attrs.VersionNumber));
+							devices.Add(new Device(fp, diDetail.DevicePath, name, attrs.VendorID, attrs.ProductID, attrs.VersionNumber, inputReportByteLength));
 
 							// the device list object owns the handle now
 							fp = System.IntPtr.Zero;
@@ -567,7 +576,7 @@ namespace DirectOutput.Cab.Out.PS
         #endregion
 
         // list of Pinscape controller devices discovered in Windows USB HID scan
-        private static List<Device> Devices;
+        private static readonly List<Device> Devices;
 
         // my device
         private Device Dev;

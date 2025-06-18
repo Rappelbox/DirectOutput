@@ -20,7 +20,7 @@ namespace DirectOutput
 {
     /// <summary>
     /// Pinball is the main object of the DirectOutput framework.<br/>
-    /// It holds all objects required to process Pinmame data, trigger the necessary effects and update toys and output controllers.
+    /// It holds all objects required to process PinMame data, trigger the necessary effects and update toys and output controllers.
     /// </summary>
     public class Pinball
     {
@@ -78,7 +78,7 @@ namespace DirectOutput
         private GlobalConfig _GlobalConfig = new GlobalConfig();
 
         /// <summary>
-        /// Gets the global config for the Pinnball object.
+        /// Gets the global config for the Pinball object.
         /// </summary>
         /// <value>
         /// The global config for the Pinball object.
@@ -105,37 +105,35 @@ namespace DirectOutput
         /// <param name="RomName">Name of the rom.</param>
         public void Setup(string GlobalConfigFilename = "", string TableFilename = "", string RomName = "")
         {
-            bool GlobalConfigLoaded = true;
-            //Load the global config
-
             try
             {
-                Log.Write("Global config filename is \"" + GlobalConfigFilename + "\"");
                 if (!GlobalConfigFilename.IsNullOrWhiteSpace())
                 {
-                    FileInfo GlobalConfigFile = new FileInfo(GlobalConfigFilename);
-
+					Log.Write("Loading global configuration from {0}".Build(GlobalConfigFilename));
+					FileInfo GlobalConfigFile = new FileInfo(GlobalConfigFilename);
                     GlobalConfig = GlobalConfig.GetGlobalConfigFromConfigXmlFile(GlobalConfigFile.FullName);
-                    if (GlobalConfig == null)
+                    if (GlobalConfig != null)
                     {
-                        Log.Write("No global config file loaded");
-                        GlobalConfigLoaded = false;
-
-                        //set new global config object if it config could not be loaded from the file.
-                        GlobalConfig = new GlobalConfig();
+						Log.Write("Global config successfully loaded from {0}".Build(GlobalConfigFilename));
+					}
+                    else
+                    {
+						// failed to load - use a default config
+						Log.Write("No global config file loaded");
+						GlobalConfig = new GlobalConfig();
                     }
+
                     GlobalConfig.GlobalConfigFilename = GlobalConfigFile.FullName;
                 }
                 else
                 {
-                    GlobalConfig = new GlobalConfig();
+					Log.Write("Global config filename is unknown; using defaults");
+					GlobalConfig = new GlobalConfig();
                     GlobalConfig.GlobalConfigFilename = GlobalConfigFilename;
                 }
-
             }
             catch (Exception E)
             {
-
                 throw new Exception("DirectOutput framework could not initialize global config.\n Inner exception: {0}".Build(E.Message), E);
             }
 
@@ -156,44 +154,23 @@ namespace DirectOutput
                 }
                 try
                 {
-
                     Log.Filename = GlobalConfig.GetLogFilename((!TableFilename.IsNullOrWhiteSpace() ? new FileInfo(TableFilename).FullName : ""), RomName);
+                    Log.Instrumentations = GlobalConfig.Instrumentation;
                     Log.Init();
-
                 }
                 catch (Exception E)
                 {
                     Console.WriteLine(E.StackTrace);
-                    throw new Exception("DirectOutput framework could initialize the log file.\n Inner exception: {0}".Build(E.Message), E);
+                    throw new Exception("DirectOutput framework could not initialize the log file.\n Inner exception: {0}".Build(E.Message), E);
                 }
             }
 
-            // finalize logger initialization
+            // finish logger initialization
             Log.AfterInit();
 
             try
             {
-                if (GlobalConfigLoaded)
-                {
-                    Log.Write("Global config loaded from: {0}".Build(GlobalConfigFilename));
-                }
-                else
-                {
-                    if (!GlobalConfigFilename.IsNullOrWhiteSpace())
-                    {
-                        Log.Write("Could not find or load the global config file {0}".Build(GlobalConfigFilename));
-                    }
-                    else
-                    {
-                        Log.Write("No GlobalConfig file loaded. Using newly instanciated GlobalConfig object instead.");
-                    }
-                }
-
-
-
                 Log.Write("Loading Pinball parts");
-
-
 
                 Log.Write("Loading cabinet");
                 //Load cabinet config
@@ -208,8 +185,7 @@ namespace DirectOutput
                         {
                             Cabinet = Cabinet.GetCabinetFromConfigXmlFile(CCF);
 
-                            Log.Write("{0} output controller defnitions and {1} toy definitions loaded from cabinet config.".Build(Cabinet.OutputControllers.Count,Cabinet.Toys.Count));
-
+                            Log.Write("{0} output controller definitions and {1} toy definitions loaded from cabinet config.".Build(Cabinet.OutputControllers.Count,Cabinet.Toys.Count));
 
                             Cabinet.CabinetConfigurationFilename = CCF.FullName;
                             if (Cabinet.AutoConfigEnabled)
@@ -221,17 +197,15 @@ namespace DirectOutput
                                 }
                                 catch (Exception E)
                                 {
-                                    Log.Exception("A eception occured during cabinet auto configuration", E);
+                                    Log.Exception("An exception occurred during cabinet auto configuration", E);
                                 }
-                                Log.Write("Autoconfig complete.");
+                                Log.Write("Auto-config complete.");
                             }
                             Log.Write("Cabinet config loaded successfully from {0}".Build(CCF.FullName));
                         }
                         catch (Exception E)
                         {
-                            Log.Exception("A exception occured when loading cabinet config file: {0}".Build(CCF.FullName), E);
-
-
+                            Log.Exception("A exception occurred when loading cabinet config file: {0}".Build(CCF.FullName), E);
                         }
                     }
                     else
@@ -241,7 +215,7 @@ namespace DirectOutput
                 }
                 if (Cabinet == null)
                 {
-                    Log.Write("No cabinet config file loaded. Will use AutoConfig.");
+                    Log.Warning("No cabinet config file loaded. Will use AutoConfig.");
                     //default to a new cabinet object if the config cant be loaded
                     Cabinet = new Cabinet();
                     Cabinet.AutoConfig();
@@ -271,7 +245,7 @@ namespace DirectOutput
                         }
                         catch (Exception E)
                         {
-                            Log.Exception("A exception occured when loading table config: {0}".Build(TCF.FullName), E);
+                            Log.Exception("A exception occurred when loading table config: {0}".Build(TCF.FullName), E);
                         }
                         if (Table.AddLedControlConfig)
                         {
@@ -349,7 +323,7 @@ namespace DirectOutput
                                 }
                                 catch (Exception E)
                                 {
-                                    Log.Exception("A exception occured when displaying the update notification", E);
+                                    Log.Exception("A exception occurred when displaying the update notification", E);
                                 }
                             }
 
@@ -361,8 +335,7 @@ namespace DirectOutput
                     }
                     else
                     {
-
-                        Log.Write("Cant load config from directoutput.ini or ledcontrol.ini file(s) since no RomName was supplied. No ledcontrol config will be loaded.");
+                        Log.Warning("Cant load config from directoutput.ini or ledcontrol.ini file(s) since no RomName was supplied. No ledcontrol config will be loaded.");
                     }
 
                 }
@@ -474,7 +447,7 @@ namespace DirectOutput
             }
             catch (Exception E)
             {
-                Log.Exception("A exception occured while finishing the DirectOutput framework.", E);
+                Log.Exception("A exception occurred while finishing the DirectOutput framework.", E);
                 throw new Exception("DirectOutput framework has encountered while finishing.\n Inner exception: {0}".Build(E.Message), E);
             }
         }
@@ -485,7 +458,7 @@ namespace DirectOutput
 
         #region MainThread
         /// <summary>
-        /// Inits the main thread.
+        /// Initializes the main thread.
         /// </summary>
         /// <exception cref="System.Exception">DirectOutput MainThread could not start.</exception>
         private void InitMainThread()
@@ -513,7 +486,7 @@ namespace DirectOutput
         /// <summary>
         /// Finishes the main thread.
         /// </summary>
-        /// <exception cref="System.Exception">A error occured during termination of DirectOutput MainThread</exception>
+        /// <exception cref="System.Exception">A error occurred during termination of DirectOutput MainThread</exception>
         private void FinishMainThread()
         {
             if (MainThread != null)
@@ -533,8 +506,8 @@ namespace DirectOutput
                 }
                 catch (Exception E)
                 {
-                    Log.Exception("A error occured during termination of DirectOutput MainThread", E);
-                    throw new Exception("A error occured during termination of DirectOutput MainThread", E);
+                    Log.Exception("A error occurred during termination of DirectOutput MainThread", E);
+                    throw new Exception("A error occurred during termination of DirectOutput MainThread", E);
                 }
             }
         }
@@ -580,10 +553,10 @@ namespace DirectOutput
 
 
         /// <summary>
-        /// This method is constantly beeing executed by the main thread of the framework.<br/>
-        /// Dont call this method directly. Use the Init and FinishMainThread methods.
+        /// This method is constantly being executed by the main thread of the framework.<br/>
+        /// Don't call this method directly. Use the Init and FinishMainThread methods.
         /// </summary>
-        //TODO: Think about implement something which does really check on value changes on tableelements or triggered effects before setting update required.
+        //TODO: Think about implementing something which does really check on value changes on tableelements or triggered effects before setting update required.
         private void MainThreadDoIt()
         {
 
@@ -610,7 +583,7 @@ namespace DirectOutput
                         }
                         catch (Exception E)
                         {
-                            Log.Exception("A unhandled exception occured while processing data for table element {0} {1} with value {2}".Build(D.TableElementType, D.Number, D.Value), E);
+                            Log.Exception("A unhandled exception occurred while processing data for table element {0} {1} with value {2}".Build(D.TableElementType, D.Number, D.Value), E);
                             //ThreadInfoList.RecordException(E);
 
                         }
@@ -625,7 +598,7 @@ namespace DirectOutput
                         }
                         catch (Exception E)
                         {
-                            Log.Exception("A unhandled exception occured while executing timer events.", E);
+                            Log.Exception("A unhandled exception occurred while executing timer events.", E);
                             //ThreadInfoList.RecordException(E);
                         }
                     }
@@ -640,7 +613,7 @@ namespace DirectOutput
                         }
                         catch (Exception E)
                         {
-                            Log.Exception("A unhandled exception occured while updating the output controllers", E);
+                            Log.Exception("A unhandled exception occurred while updating the output controllers", E);
                             //ThreadInfoList.RecordException(E);
                         }
                     }
@@ -669,7 +642,7 @@ namespace DirectOutput
             }
             catch (Exception E)
             {
-                Log.Exception("A unexpected exception occured in the DirectOutput MainThread", E);
+                Log.Exception("A unexpected exception occurred in the DirectOutput MainThread", E);
                 //ThreadInfoList.RecordException(E);
             }
 
@@ -750,17 +723,17 @@ namespace DirectOutput
             S += "   Global Config filename:" + GlobalConfig.GlobalConfigFilename + "\n";
             S += "  }\n";
             S += "  Table {\n";
-            S += "    Tablename: " + Table.TableName + "\n";
-            S += "    Tablefileename: " + Table.TableFilename + "\n";
+            S += "    Table name: " + Table.TableName + "\n";
+            S += "    Table filename: " + Table.TableFilename + "\n";
             S += "    RomName: " + Table.RomName + "\n";
             S += "    Table config source: " + Table.ConfigurationSource + "\n";
-            S += "    Table config fileename: " + Table.TableConfigurationFilename + "\n";
+            S += "    Table config filename: " + Table.TableConfigurationFilename + "\n";
             S += "    Table Elements count: " + Table.TableElements.Count + "\n";
             S += "    Table Effects count: " + Table.Effects.Count + "\n";
             S += "  }\n";
             S += "  Cabinet {\n";
             S += "     Cabinet config filename: " + Cabinet.CabinetConfigurationFilename + "\n";
-            S += "     Outputcontrollers count: " + Cabinet.OutputControllers.Count + "\n";
+            S += "     Output controllers count: " + Cabinet.OutputControllers.Count + "\n";
             S += "     Output toys count: " + Cabinet.Toys.Count + "\n";
             S += "  }\n";
 
